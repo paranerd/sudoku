@@ -49,8 +49,6 @@ svg { width: 22px; height: 22px; flex: 0 0 auto; }
 .loading-overlay { font-size: 13px; }
 .spinner { width: 24px; height: 24px; border: 2px solid #d7dece; border-top-color: #6f8665; border-radius: 50%; animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.hint-card { display: flex; align-items: center; justify-content: space-between; gap: 6px; background: #e9eee0; border-radius: 7px; padding: 8px; margin-bottom: 10px; > svg { width: 16px; height: 16px; } .text-button { font-size: 11px; white-space: nowrap; svg { display: none; } } }
-.dismiss { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; background: transparent; padding: 4px; svg { width: 14px; height: 14px; } }
 .text-button { display: inline-flex; align-items: center; gap: 10px; padding: 5px 0; background: transparent; color: $green; font-size: 12px; font-weight: 550; svg { width: 16px; height: 16px; } }
 .completion { display: grid; grid-template-columns: 22px 1fr; gap: 4px 8px; margin: 0 0 14px; padding: 14px; background: #e8edde; border-radius: 8px; h2 { font-size: 16px; font-weight: 500; margin: 0; letter-spacing: -.4px; } p { grid-column: 2; font-size: 11px; color: #6c7a5e; line-height: 1.5; margin: 0; } }
 .completion-icon { display: flex; color: #759064; }
@@ -84,7 +82,6 @@ fieldset { padding: 0; border: 0; margin: 0 0 20px; legend { font-size: 12px; fo
   .number { font-size: 23px; min-height: 44px; padding: 5px 1px; border-radius: 5px; }
   .tools { margin: 8px 0 12px; gap: 12px; justify-content: center; }
   .tool { flex: 0 1 85px; min-height: 44px; gap: 5px; font-size: 9px; svg { width: 19px; height: 19px; } }
-  .hint-card { min-height: 44px; justify-content: start; margin-bottom: 10px; .dismiss { margin-left: auto; } }
   .completion { margin-bottom: 12px; }
 }
 @media (max-height: 760px) { .controls-top { display: none; } .controls { padding-top: 0; } .number { min-height: 44px; } .tools { margin: 10px 0 12px; } .tool { min-height: 44px; } }
@@ -100,7 +97,6 @@ fieldset { padding: 0; border: 0; margin: 0 0 20px; legend { font-size: 12px; fo
   .tools { margin: 8px 0 10px; }
   .tool { min-height: 40px; gap: 4px; font-size: 9px; svg { width: 17px; height: 17px; } }
   .primary { min-height: 40px; padding: 8px 15px; font-size: 12px; }
-  .hint-card { padding: 5px; margin-bottom: 8px; }
 }
 @media (orientation: landscape) and (max-height: 620px) {
   dialog { width: min(520px, calc(100% - 24px)); }

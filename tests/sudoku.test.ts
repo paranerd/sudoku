@@ -58,7 +58,7 @@ describe('saved games', () => {
     const i = g.givens.findIndex(n => !n);
     g.history.push({ values: [...g.values], notes: g.notes.map(n => [...n]) });
     g.notes[i] = [1, 4]; g.elapsed = 71.5;
-    const settings = { ...defaults, idleHints: false };
+    const settings = { ...defaults, showConflicts: false };
     expect(save(g, settings)).toBe(true);
     expect(load()).toEqual({ game: g, settings });
   });
@@ -78,11 +78,11 @@ describe('saved games', () => {
     expect(load().game).toBeNull();
     expect(save(null, defaults)).toBe(false);
   });
-  it('migrates old hint choices without losing the game or disabled help', () => {
+  it('drops old hint settings without losing the game or other preferences', () => {
     const game = newGame(generatePuzzle(6, 'medium', seeded(8)));
     storage.set('quiet-sudoku-v1', JSON.stringify({ game, settings: { idleHints: false, idleSeconds: 90, showConflicts: false } }));
     const restored = load();
     expect(restored.game).toEqual(game);
-    expect(restored.settings).toEqual({ idleHints: false, idleSeconds: 60, showConflicts: false, highlightPeers: true });
+    expect(restored.settings).toEqual({ showConflicts: false, highlightPeers: true });
   });
 });

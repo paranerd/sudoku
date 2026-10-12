@@ -22,12 +22,12 @@ npm run preview
 - 4×4 (2×2-Blöcke), 6×6 (2×3-Blöcke), 9×9 (3×3-Blöcke)
 - Leicht, Mittel, Schwer: weniger Vorgaben mit steigender Schwierigkeit; keine Bewertung nach Lösungsstrategien. 4×4 ist generell für kurze, einfache Runden gedacht.
 - Neue Rätsel entstehen lokal in einem Web Worker. Jede entfernte Vorgabe wird auf eine eindeutige Lösung geprüft.
-- Zahlen, Notizen, Rückgängig, Löschen und optionale Markierung doppelter Zahlen
+- Zahlen, Notizen, Rückgängig, Löschen und optionale Markierung von Konflikten
 - „Neues Spiel“ als Neustart-Icon neben dem Zahnrad; Größe und Schwierigkeit wählen und ausdrücklich bestätigen. Abbrechen behält den Spielstand.
-- Hilfsangebot über ein Dropdown: Aus, 30s, 1min oder 2min. Erst ein Klick löst ein Feld auf. Ist das gewählte Feld bereits richtig, wird das erste ungelöste Feld verwendet.
+- „Lösen“ mit Glühbirnen-Icon in der Werkzeugleiste: Erst nach einer zusätzlichen Bestätigung wird das gewählte Feld aufgelöst. Ist es vorgegeben oder bereits richtig, wird das erste ungelöste Feld angeboten. Der Dialog nennt Zeile und Spalte; Abbrechen ändert nichts. Es gibt keine automatische Denkpausen-Hilfe.
 - Hervorhebung von Block, Zeile und Spalte separat ein- und ausschaltbar; das gewählte Feld bleibt markiert.
 - Dezent angezeigte aktive Spielzeit, Pause, automatische Pause bei versteckter App oder offenem Dialog
-- Automatische lokale Speicherung, vollständig sichtbare Darstellung ohne Scrollen in Hoch- und Querformat, Tastaturbedienung. Das Spielfeld passt sich an die verfügbare Höhe an, auch bei Hilfsangeboten und Abschlussmeldung.
+- Automatische lokale Speicherung, vollständig sichtbare Darstellung ohne Scrollen in Hoch- und Querformat, Tastaturbedienung. Das Spielfeld passt sich an die verfügbare Höhe an, auch bei der Abschlussmeldung.
 - Mobil bleibt die Werkzeugleiste am unteren Bildschirmrand. Reservierter Platz und zusätzlicher Safe-Area-Abstand verhindern Überlappung mit dem Home-Indikator und dem Spielfeld.
 - Installierbare PWA mit vollständigem Offline-Modus nach dem ersten erfolgreichen Laden
 
@@ -66,4 +66,4 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Die Logiktests prüfen gültige, eindeutige Rätsel für alle neun Kombinationen, Schwierigkeitsabstufungen, Konflikte und wiederherstellbare Spielstände. Die Browsertests prüfen Eingaben, Notizen, Rückgängig, Pause, Hilfsangebote, alle Feldgrößen, Hoch-/Querformat, Speicherung und echten Offline-Neustart einschließlich neuer Rätsel.
+Die Logiktests prüfen gültige, eindeutige Rätsel für alle neun Kombinationen, Schwierigkeitsabstufungen, Konflikte und wiederherstellbare Spielstände. Die Browsertests prüfen Eingaben, Notizen, Rückgängig, Pause, bestätigtes Auflösen, alle Feldgrößen, Hoch-/Querformat, Speicherung und echten Offline-Neustart einschließlich neuer Rätsel.

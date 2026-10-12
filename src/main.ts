@@ -41,8 +41,8 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
           <button id="undo-button" class="tool" aria-label="Letzten Zug rückgängig machen">${icon('undo')}<span>Zurück</span></button>
           <button id="notes-button" class="tool" aria-pressed="false" aria-label="Notizen umschalten">${icon('pencil')}<span>Notizen</span></button>
           <button id="erase-button" class="tool" aria-label="Gewähltes Feld leeren">${icon('erase')}<span>Löschen</span></button>
+          <button id="reveal-button" class="tool" aria-label="Ein Feld lösen" disabled>${icon('light')}<span>Lösen</span></button>
         </div>
-        <div class="hint-card" id="hint-card" hidden>${icon('light')}<button class="text-button" id="reveal-button">Eine Zahl auflösen ${icon('arrow')}</button><button class="dismiss" id="dismiss-hint" aria-label="Hilfsangebot schließen">${icon('close')}</button></div>
         <div class="completion" id="completion" hidden><span class="completion-icon">${icon('check')}</span><h2>Alles an seinem Platz.</h2><p id="completion-text"></p></div>
       </aside>
     </section>
@@ -57,8 +57,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   </form></dialog>
   <dialog id="settings-dialog" aria-labelledby="settings-title"><form method="dialog" class="dialog-content">
     <div class="dialog-header"><h2 id="settings-title">Einstellungen</h2><button class="icon-button" value="close" aria-label="Schließen">${icon('close')}</button></div>
-    <div class="setting"><label for="idle-delay"><strong>Hilfe bei einer Denkpause</strong><span>Bietet nach einer Pause an, eine Zahl aufzulösen.</span></label><select id="idle-delay"><option value="0">Aus</option><option value="30">30s</option><option value="60">1min</option><option value="120">2min</option></select></div>
-    <div class="setting"><label for="conflict-toggle"><strong>Doppelte Zahlen markieren</strong><span>Zeigt Konflikte in Zeile, Spalte und Block.</span></label><input class="switch" id="conflict-toggle" type="checkbox"></div>
+    <div class="setting"><label for="conflict-toggle"><strong>Konflikte markieren</strong><span>Zeigt Konflikte in Zeile, Spalte und Block.</span></label><input class="switch" id="conflict-toggle" type="checkbox"></div>
     <div class="setting"><label for="highlight-toggle"><strong>Block, Zeile & Spalte hervorheben</strong><span>Markiert die Umgebung des gewählten Feldes.</span></label><input class="switch" id="highlight-toggle" type="checkbox"></div>
     <div class="app-actions"><button class="text-button" id="help-button" type="button">Tastatur & Spielregeln</button><button class="text-button" id="install-button" type="button" hidden>App installieren ${icon('arrow')}</button><button class="text-button" id="update-button" type="button" hidden>Update laden ${icon('arrow')}</button></div>
   </form></dialog>
@@ -66,6 +65,11 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <div class="dialog-header"><h2 id="help-title">Tastatur & Spielregeln</h2><button class="icon-button" value="close" aria-label="Zurück zu den Einstellungen">${icon('close')}</button></div>
     <p class="help-text">Jede Zahl gehört genau einmal in jede Zeile, Spalte und jeden Block. 4×4 hat 2×2-Blöcke, 6×6 hat 2×3-Blöcke, 9×9 hat 3×3-Blöcke.</p>
     <p class="help-text">Pfeiltasten wählen ein Feld. Ziffern setzen eine Zahl. N schaltet Notizen um, Entf löscht, Strg/⌘ + Z macht einen Zug rückgängig.</p>
+  </form></dialog>
+  <dialog id="reveal-dialog" aria-labelledby="reveal-title" aria-describedby="reveal-description"><form method="dialog" class="dialog-content">
+    <div class="dialog-header"><h2 id="reveal-title">Feld lösen?</h2><button class="icon-button" value="cancel" aria-label="Schließen">${icon('close')}</button></div>
+    <p class="dialog-description" id="reveal-description"></p>
+    <div class="dialog-actions"><button class="secondary" value="cancel" autofocus>Abbrechen</button><button class="primary" id="confirm-reveal" type="button">Feld lösen ${icon('check')}</button></div>
   </form></dialog>
 `;
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id)! as T;
@@ -75,12 +79,14 @@ const settings = initial.settings;
 let selected = game ? game.values.findIndex(n => !n) : 0;
 if (selected < 0) selected = 0;
 let notesMode = false, paused = false, generating = false;
-let lastTick = performance.now(), lastAction = performance.now();
+let lastTick = performance.now();
 let running = false;
 let storageFailed = false;
 const newDialog = $<HTMLDialogElement>('new-dialog'), settingsDialog = $<HTMLDialogElement>('settings-dialog');
 const helpDialog = $<HTMLDialogElement>('help-dialog');
-const dialogs = [newDialog, settingsDialog, helpDialog];
+const revealDialog = $<HTMLDialogElement>('reveal-dialog');
+const dialogs = [newDialog, settingsDialog, helpDialog, revealDialog];
+let revealTarget: number | null = null;
 function announce(message: string) { $('announcement').textContent = message; }
 function notice(message: string) {
   announce(message);
@@ -104,9 +110,7 @@ function settleTime() {
   running = !!game && !paused && !game.completed && !generating && !document.hidden && dialogs.every(d => !d.open);
   $('timer').textContent = formatTime(game?.elapsed || 0);
 }
-function activity() { lastAction = performance.now(); }
-function hideHint() { $('hint-card').hidden = true; fitBoard(); }
-// Size the square using the actual remaining space, including help and completion cards.
+// Size the square using the actual remaining space, including the completion card.
 function fitBoard() {
   const layout = document.querySelector<HTMLElement>('.game-layout')!;
   const controls = document.querySelector<HTMLElement>('.controls')!;
@@ -146,6 +150,7 @@ function render() {
   $<HTMLButtonElement>('undo-button').disabled = !game.history.length || paused || game.completed || generating;
   $<HTMLButtonElement>('erase-button').disabled = !!givens[selected] || paused || game.completed || generating;
   $<HTMLButtonElement>('notes-button').disabled = paused || game.completed || generating;
+  $<HTMLButtonElement>('reveal-button').disabled = paused || game.completed || generating;
   $<HTMLButtonElement>('pause-button').disabled = game.completed || generating;
   $('pause-button').innerHTML = icon(paused ? 'play' : 'pause');
   $('pause-button').setAttribute('aria-label', paused ? 'Weiterspielen' : 'Spiel pausieren');
@@ -163,7 +168,6 @@ function snapshot() {
 }
 function edit(value: number, reveal = false) {
   if (!game || paused || generating || game.completed || game.givens[selected]) return;
-  activity(); hideHint();
   if (notesMode && !reveal && value) {
     if (game.values[selected]) return;
     snapshot();
@@ -188,19 +192,19 @@ function undo() {
   const previous = game.history.pop();
   if (!previous) return;
   game.values = previous.values; game.notes = previous.notes;
-  activity(); hideHint(); render(); persist();
+  render(); persist();
 }
 function togglePause() {
   if (!game || game.completed || generating) return;
   settleTime(); paused = !paused; settleTime();
-  activity(); hideHint(); render(); persist();
+  render(); persist();
   if (!paused) focusCell();
 }
 const worker = new Worker(new URL('./generator.worker.ts', import.meta.url), { type: 'module' });
 worker.onmessage = (event: MessageEvent<Puzzle>) => {
   game = newGame(event.data); selected = game.values.findIndex(n => !n);
   paused = false; notesMode = false; generating = false;
-  activity(); hideHint(); render(); settleTime(); persist();
+  render(); settleTime(); persist();
   announce(`${game.size} mal ${game.size}, ${labels[game.difficulty]}. Neues Spiel bereit.`);
 };
 worker.onerror = () => {
@@ -209,14 +213,14 @@ worker.onerror = () => {
   notice('Das Rätsel konnte nicht erstellt werden. Bitte lade die App neu.');
 };
 function start(size: Size, difficulty: Difficulty) {
-  settleTime(); generating = true; running = false; hideHint();
+  settleTime(); generating = true; running = false;
   if (game) render(); else $('loading-overlay').hidden = false;
   worker.postMessage({ size, difficulty });
 }
 $('board').addEventListener('click', event => {
   const cell = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-index]');
   if (!cell || paused || generating) return;
-  selected = Number(cell.dataset.index); activity(); render(); focusCell();
+  selected = Number(cell.dataset.index); render(); focusCell();
 });
 $('number-pad').addEventListener('click', event => {
   const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-number]');
@@ -227,22 +231,30 @@ $('erase-button').onclick = () => edit(0);
 $('undo-button').onclick = undo;
 $('pause-button').onclick = togglePause;
 $('resume-button').onclick = togglePause;
-$('dismiss-hint').onclick = () => { hideHint(); activity(); };
 $('reveal-button').onclick = () => {
-  if (!game) return;
-  if (game.givens[selected] || game.values[selected] === game.solution[selected]) {
-    selected = game.values.findIndex((n, i) => n !== game!.solution[i]);
-  }
-  if (selected < 0) return;
-  edit(game.solution[selected], true);
-  announce(`Zeile ${Math.floor(selected / game.size) + 1}, Spalte ${selected % game.size + 1}: ${game.solution[selected]}.`);
+  if (!game || paused || generating || game.completed) return;
+  revealTarget = !game.givens[selected] && game.values[selected] !== game.solution[selected]
+    ? selected : game.values.findIndex((n, i) => n !== game!.solution[i]);
+  if (revealTarget < 0) { revealTarget = null; return; }
+  settleTime();
+  $('reveal-description').textContent = `Möchtest du das Feld in Zeile ${Math.floor(revealTarget / game.size) + 1}, Spalte ${revealTarget % game.size + 1} lösen?`;
+  revealDialog.showModal(); settleTime();
+};
+$('confirm-reveal').onclick = () => {
+  if (!game || revealTarget === null || !revealDialog.open) return;
+  const target = revealTarget;
+  closeDialog(revealDialog);
+  selected = target;
+  edit(game.solution[target], true);
+  if (!game.completed) announce(`Zeile ${Math.floor(target / game.size) + 1}, Spalte ${target % game.size + 1}: ${game.solution[target]}.`);
+  focusCell();
 };
 $('new-button').onclick = () => {
   settleTime();
   newDialog.querySelector<HTMLInputElement>(`[name="size"][value="${game?.size || 9}"]`)!.checked = true;
   newDialog.querySelector<HTMLInputElement>(`[name="difficulty"][value="${game?.difficulty || 'medium'}"]`)!.checked = true;
   $('new-description').textContent = game && !game.completed ? 'Möchtest du ein neues Spiel starten? Dein aktuelles Spiel wird dabei ersetzt.' : 'Möchtest du ein neues Spiel starten?';
-  newDialog.showModal(); settleTime(); hideHint();
+  newDialog.showModal(); settleTime();
 };
 $('start-button').onclick = () => {
   const data = new FormData(newDialog.querySelector('form')!);
@@ -253,22 +265,19 @@ $('settings-button').onclick = () => {
   settleTime();
   $<HTMLInputElement>('conflict-toggle').checked = settings.showConflicts;
   $<HTMLInputElement>('highlight-toggle').checked = settings.highlightPeers;
-  $<HTMLSelectElement>('idle-delay').value = String(settings.idleHints ? settings.idleSeconds : 0);
-  settingsDialog.showModal(); settleTime(); hideHint();
+  settingsDialog.showModal(); settleTime();
 };
 settingsDialog.addEventListener('change', () => {
-  const delay = Number($<HTMLSelectElement>('idle-delay').value);
-  settings.idleHints = delay > 0;
   settings.showConflicts = $<HTMLInputElement>('conflict-toggle').checked;
   settings.highlightPeers = $<HTMLInputElement>('highlight-toggle').checked;
-  if (delay > 0) settings.idleSeconds = delay;
-  activity(); render(); persist();
+  render(); persist();
 });
 $('help-button').onclick = () => { settingsDialog.close(); helpDialog.showModal(); settleTime(); };
 function closeDialog(dialog: HTMLDialogElement) {
   dialog.close();
+  if (dialog === revealDialog) revealTarget = null;
   if (dialog === helpDialog) settingsDialog.showModal();
-  activity(); settleTime(); persist();
+  settleTime(); persist();
 }
 dialogs.forEach(dialog => {
   dialog.querySelector('form')!.addEventListener('submit', event => { event.preventDefault(); closeDialog(dialog); });
@@ -279,7 +288,6 @@ dialogs.forEach(dialog => {
   });
 });
 document.addEventListener('keydown', event => {
-  activity();
   if (!game || dialogs.some(d => d.open) || paused || generating || game.completed ||
     (event.target instanceof HTMLElement && event.target.closest('button') && !$('board').contains(event.target))) return;
   const directions: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -game.size, ArrowDown: game.size };
@@ -294,14 +302,10 @@ document.addEventListener('keydown', event => {
     else if (event.key.toLowerCase() === 'n') { event.preventDefault(); notesMode = !notesMode; render(); }
   }
 });
-document.addEventListener('pointerdown', activity);
-document.addEventListener('visibilitychange', () => { settleTime(); activity(); persist(); });
+document.addEventListener('visibilitychange', () => { settleTime(); persist(); });
 window.addEventListener('pagehide', () => { settleTime(); persist(); });
 setInterval(() => {
   settleTime();
-  if (running && settings.idleHints && performance.now() - lastAction >= settings.idleSeconds * 1000 && $('hint-card').hidden) {
-    $('hint-card').hidden = false; fitBoard(); announce('Du kannst jetzt eine Zahl auflösen.');
-  }
   persist();
 }, 1000);
 

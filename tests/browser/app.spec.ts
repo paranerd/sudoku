@@ -19,7 +19,7 @@ async function noScroll(page: Page) {
   if (await dialog.count()) {
     expect(await dialog.evaluate(el => el.scrollHeight <= el.clientHeight && el.scrollWidth <= el.clientWidth)).toBe(true);
   } else {
-    for (const selector of ['.header', '.board-wrap', '#number-pad', '.tools', '#new-button', '#hint-card', '#completion']) {
+    for (const selector of ['.header', '.board-wrap', '#number-pad', '.tools', '#new-button', '#completion']) {
       const el = page.locator(selector);
       if (!await el.isVisible()) continue;
       const box = await el.boundingBox();
@@ -72,52 +72,75 @@ test('new game is beside settings and only replaces the puzzle after confirmatio
   await create(page, 4, 'easy');
   await expect(page.locator('#board .cell')).toHaveCount(16);
 });
-test('idle hint is opt-in per reveal, and settings persist', async ({ page }) => {
-  await page.clock.install();
-  await ready(page);
-  await page.clock.fastForward(61000);
-  await expect(page.locator('#hint-card')).toBeVisible();
-  const before = await page.locator('.cell.entered').evaluateAll(cells => cells.filter(c => c.textContent?.trim()).length);
-  await page.getByRole('button', { name: 'Eine Zahl auflösen' }).click();
-  await expect(page.locator('#hint-card')).toBeHidden();
-  const after = await page.locator('.cell.entered').evaluateAll(cells => cells.filter(c => c.textContent?.trim()).length);
-  expect(after).toBe(before + 1);
-  await page.getByRole('button', { name: 'Einstellungen öffnen' }).click();
-  await page.locator('#idle-delay').selectOption('0');
-  await page.getByRole('button', { name: 'Schließen', exact: true }).last().click();
-  await page.reload();
-  await expect(page.locator('#loading-overlay')).toBeHidden();
-  await page.clock.fastForward(121000);
-  await expect(page.locator('#hint-card')).toBeHidden();
-  await page.getByRole('button', { name: 'Einstellungen öffnen' }).click();
-  await expect(page.locator('#idle-delay')).toHaveValue('0');
-});
-test('new settings control hint delay and peer highlighting independently', async ({ page }) => {
+test('manual reveal needs confirmation, cancellation changes nothing and undo restores notes', async ({ page }) => {
   await page.clock.install(); await ready(page);
+  const state = () => page.evaluate(() => JSON.parse(localStorage.getItem('quiet-sudoku-v1')!).game);
+  const initial = await state();
+  const target = initial.givens.findIndex((n: number) => !n);
+  const cell = page.locator(`[data-index="${target}"]`);
+  await cell.click(); await page.keyboard.press('n'); await page.keyboard.press('1');
+  const before = await state();
+  await page.getByRole('button', { name: 'Ein Feld lösen', exact: true }).click();
+  await expect(page.locator('#reveal-dialog')).toBeVisible();
+  await expect(page.locator('#reveal-description')).toHaveText(`Möchtest du das Feld in Zeile ${Math.floor(target / 9) + 1}, Spalte ${target % 9 + 1} lösen?`);
+  const time = await page.locator('#timer').textContent();
+  await page.clock.fastForward(5000); await expect(page.locator('#timer')).toHaveText(time!);
+  await page.getByRole('button', { name: 'Abbrechen' }).click();
+  const canceled = await state();
+  expect(canceled.values).toEqual(before.values); expect(canceled.notes).toEqual(before.notes);
+  expect(canceled.hints).toBe(0); expect(canceled.history).toEqual(before.history);
+  await page.getByRole('button', { name: 'Ein Feld lösen', exact: true }).click();
+  await page.keyboard.press('Escape'); await expect(page.locator('#reveal-dialog')).toBeHidden();
+  expect((await state()).values).toEqual(before.values);
+  await page.getByRole('button', { name: 'Ein Feld lösen', exact: true }).click();
+  await page.getByRole('button', { name: 'Feld lösen', exact: true }).click();
+  await expect(page.locator('#reveal-dialog')).toBeHidden();
+  await expect(cell).toHaveText(String(initial.solution[target]));
+  const solved = await state();
+  expect(solved.hints).toBe(1); expect(solved.notes[target]).toEqual([]);
+  expect(solved.values.filter((_: number, i: number) => i !== target)).toEqual(before.values.filter((_: number, i: number) => i !== target));
+  await page.getByRole('button', { name: 'Letzten Zug rückgängig machen' }).click();
+  expect((await state()).values).toEqual(before.values); expect((await state()).notes).toEqual(before.notes);
+  await page.getByRole('button', { name: 'Spiel pausieren' }).click();
+  await expect(page.locator('#reveal-button')).toBeDisabled();
+  await page.getByRole('button', { name: 'Weiterspielen', exact: true }).last().click();
+  await page.clock.fastForward(300000);
+  await expect(page.locator('dialog[open]')).toHaveCount(0); await expect(page.locator('#hint-card')).toHaveCount(0);
+});
+test('reveal offers an unresolved field when a given is selected and corrects a wrong entry', async ({ page }) => {
+  await ready(page); await create(page, 4, 'hard');
+  const initial = await page.evaluate(() => JSON.parse(localStorage.getItem('quiet-sudoku-v1')!).game);
+  const target = initial.givens.findIndex((n: number) => !n);
+  const given = initial.givens.findIndex((n: number) => !!n);
+  await page.locator(`[data-index="${target}"]`).click();
+  await page.keyboard.press(String(initial.solution[target] % 4 + 1));
+  await page.locator(`[data-index="${given}"]`).click();
+  await page.getByRole('button', { name: 'Ein Feld lösen', exact: true }).click();
+  await expect(page.locator('#reveal-description')).toHaveText(`Möchtest du das Feld in Zeile ${Math.floor(target / 4) + 1}, Spalte ${target % 4 + 1} lösen?`);
+  await page.getByRole('button', { name: 'Abbrechen' }).click();
+  await expect(page.locator(`[data-index="${given}"]`)).toHaveAttribute('aria-selected', 'true');
+  await page.getByRole('button', { name: 'Ein Feld lösen', exact: true }).click();
+  await page.getByRole('button', { name: 'Feld lösen', exact: true }).click();
+  await expect(page.locator(`[data-index="${target}"]`)).toHaveText(String(initial.solution[target]));
+  await page.reload(); await expect(page.locator(`[data-index="${target}"]`)).toHaveText(String(initial.solution[target]));
+});
+test('conflict and peer highlight settings persist independently', async ({ page }) => {
+  await ready(page);
   await expect(page.locator('.cell.related').first()).toBeVisible();
   await page.getByRole('button', { name: 'Einstellungen öffnen' }).click();
   await expect(page.locator('#settings-title')).toHaveText('Einstellungen');
-  await expect(page.locator('#idle-delay option')).toHaveText(['Aus', '30s', '1min', '2min']);
-  await expect(page.locator('#idle-toggle')).toHaveCount(0);
-  await page.locator('#highlight-toggle').uncheck();
-  await page.locator('#idle-delay').selectOption('30');
+  await expect(page.locator('label[for="conflict-toggle"] strong')).toHaveText('Konflikte markieren');
+  await expect(page.getByText('Hilfe bei einer Denkpause')).toHaveCount(0);
+  await expect(page.locator('#idle-delay, #idle-toggle')).toHaveCount(0);
+  await page.locator('#highlight-toggle').uncheck(); await page.locator('#conflict-toggle').uncheck();
   await page.getByRole('button', { name: 'Schließen', exact: true }).last().click();
-  await expect(page.locator('.cell.related')).toHaveCount(0);
-  await expect(page.locator('.cell.selected')).toHaveCount(1);
-  await page.clock.fastForward(31000);
-  await expect(page.locator('#hint-card')).toBeVisible();
+  await expect(page.locator('.cell.related')).toHaveCount(0); await expect(page.locator('.cell.selected')).toHaveCount(1);
   await page.reload(); await expect(page.locator('#loading-overlay')).toBeHidden();
-  await expect(page.locator('.cell.related')).toHaveCount(0);
   await page.getByRole('button', { name: 'Einstellungen öffnen' }).click();
-  await expect(page.locator('#idle-delay')).toHaveValue('30');
-  await expect(page.locator('#highlight-toggle')).not.toBeChecked();
+  await expect(page.locator('#highlight-toggle')).not.toBeChecked(); await expect(page.locator('#conflict-toggle')).not.toBeChecked();
   await page.locator('#highlight-toggle').check();
-  await page.locator('#idle-delay').selectOption('120');
   await page.getByRole('button', { name: 'Schließen', exact: true }).last().click();
   await expect(page.locator('.cell.related').first()).toBeVisible();
-  await page.clock.runFor(100);
-  await page.clock.fastForward(119000); await expect(page.locator('#hint-card')).toBeHidden();
-  await page.clock.fastForward(2000); await expect(page.locator('#hint-card')).toBeVisible();
 });
 test('installed app shell reloads offline and generates new puzzles offline', async ({ page, context }) => {
   await ready(page);
@@ -168,11 +191,13 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1280, height: 60
       }
       await expect(page.locator('#new-button')).toBeVisible();
     }
-    await page.clock.fastForward(61000); await expect(page.locator('#hint-card')).toBeVisible(); await noScroll(page);
-    await page.getByRole('button', { name: 'Hilfsangebot schließen' }).click();
+    await page.getByRole('button', { name: 'Ein Feld lösen', exact: true }).click(); await noScroll(page);
+    await expect(page.locator('#reveal-dialog')).toBeVisible();
+    await page.getByRole('button', { name: 'Abbrechen' }).click();
     await page.screenshot({ path: `test-results/sudoku-${viewport.width}x${viewport.height}.png`, fullPage: true });
     await page.getByRole('button', { name: 'Einstellungen öffnen' }).click(); await noScroll(page);
-    await expect(page.locator('label[for="idle-delay"] strong')).toHaveText('Hilfe bei einer Denkpause');
+    await expect(page.locator('label[for="conflict-toggle"] strong')).toHaveText('Konflikte markieren');
+    await expect(page.locator('#idle-delay')).toHaveCount(0);
     await page.screenshot({ path: `test-results/settings-${viewport.width}x${viewport.height}.png`, fullPage: true });
     await page.getByRole('button', { name: 'Tastatur & Spielregeln' }).click(); await expect(page.locator('#help-dialog')).toBeVisible(); await noScroll(page);
     await page.getByRole('button', { name: 'Zurück zu den Einstellungen' }).click();
