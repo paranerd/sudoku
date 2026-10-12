@@ -142,8 +142,8 @@ function render() {
   $('game-label').innerHTML = `${size} × ${size} <span class="meta-dot">·</span> ${labels[game.difficulty]}`;
   $('number-pad').dataset.size = String(size);
   $('number-pad').innerHTML = Array.from({ length: size }, (_, i) => {
-    const n = i + 1, count = values.filter(v => v === n).length;
-    return `<button class="number ${count === size ? 'filled' : ''}" data-number="${n}" aria-label="${notesMode ? 'Notiz' : 'Zahl'} ${n}" ${paused || generating || game!.completed ? 'disabled' : ''}>${n}</button>`;
+    const n = i + 1;
+    return `<button class="number" data-number="${n}" aria-label="${notesMode ? 'Notiz' : 'Zahl'} ${n}" ${paused || generating || game!.completed ? 'disabled' : ''}>${n}</button>`;
   }).join('');
   $('notes-button').setAttribute('aria-pressed', String(notesMode));
   $('input-help').textContent = notesMode ? 'Kleine Zahlen. Große Gedanken.' : 'Feld wählen. Zahl setzen.';
