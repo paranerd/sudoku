@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "Sudoku",
-  "short_name": "Sudoku",
-  "description": "Ein ruhiges Sudoku. Vollständig offline spielbar.",
+  "name": "Number Place",
+  "short_name": "Number Place",
+  "description": "Ein ruhiges Zahlenrätsel. Vollständig offline spielbar.",
   "lang": "de",
   "start_url": "./",
   "scope": "./",

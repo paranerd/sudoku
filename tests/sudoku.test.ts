@@ -78,4 +78,11 @@ describe('saved games', () => {
     expect(load().game).toBeNull();
     expect(save(null, defaults)).toBe(false);
   });
+  it('migrates old hint choices without losing the game or disabled help', () => {
+    const game = newGame(generatePuzzle(6, 'medium', seeded(8)));
+    storage.set('quiet-sudoku-v1', JSON.stringify({ game, settings: { idleHints: false, idleSeconds: 90, showConflicts: false } }));
+    const restored = load();
+    expect(restored.game).toEqual(game);
+    expect(restored.settings).toEqual({ idleHints: false, idleSeconds: 60, showConflicts: false, highlightPeers: true });
+  });
 });

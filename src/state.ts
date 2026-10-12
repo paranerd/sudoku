@@ -2,8 +2,8 @@ import { countSolutions, type Puzzle } from './sudoku';
 
 export interface Snapshot { values: number[]; notes: number[][] }
 export interface Game extends Puzzle, Snapshot { elapsed: number; history: Snapshot[]; completed: boolean; hints: number }
-export interface Settings { idleHints: boolean; idleSeconds: number; showConflicts: boolean }
-export const defaults: Settings = { idleHints: true, idleSeconds: 60, showConflicts: true };
+export interface Settings { idleHints: boolean; idleSeconds: number; showConflicts: boolean; highlightPeers: boolean }
+export const defaults: Settings = { idleHints: true, idleSeconds: 60, showConflicts: true, highlightPeers: true };
 const key = 'quiet-sudoku-v1';
 export function newGame(puzzle: Puzzle): Game {
   return { ...puzzle, values: [...puzzle.givens], notes: puzzle.givens.map(() => []), elapsed: 0, history: [], completed: false, hints: 0 };
@@ -24,8 +24,9 @@ export function load(): { game: Game | null; settings: Settings } {
     if (!saved) return { game: null, settings };
     settings = {
       idleHints: typeof saved.settings?.idleHints === 'boolean' ? saved.settings.idleHints : defaults.idleHints,
-      idleSeconds: [60, 90, 120].includes(saved.settings?.idleSeconds) ? saved.settings.idleSeconds : defaults.idleSeconds,
+      idleSeconds: [30, 60, 120].includes(saved.settings?.idleSeconds) ? saved.settings.idleSeconds : defaults.idleSeconds,
       showConflicts: typeof saved.settings?.showConflicts === 'boolean' ? saved.settings.showConflicts : defaults.showConflicts,
+      highlightPeers: typeof saved.settings?.highlightPeers === 'boolean' ? saved.settings.highlightPeers : defaults.highlightPeers,
     };
     const g = saved.game as Game;
     if (!g || ![4, 6, 9].includes(g.size) || !['easy', 'medium', 'hard'].includes(g.difficulty) ||

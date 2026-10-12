@@ -1,6 +1,6 @@
-# Sudoku
+# Number Place
 
-Eine minimalistische, deutschsprachige Sudoku-PWA mit TypeScript und SCSS. Keine Sounds, kein Konto, keine externen Laufzeitdienste.
+Eine minimalistische, deutschsprachige Zahlenrätsel-PWA mit TypeScript und SCSS. Keine Sounds, kein Konto, keine externen Laufzeitdienste.
 
 ## Entwicklung
 
@@ -23,12 +23,16 @@ npm run preview
 - Leicht, Mittel, Schwer: weniger Vorgaben mit steigender Schwierigkeit; keine Bewertung nach Lösungsstrategien. 4×4 ist generell für kurze, einfache Runden gedacht.
 - Neue Rätsel entstehen lokal in einem Web Worker. Jede entfernte Vorgabe wird auf eine eindeutige Lösung geprüft.
 - Zahlen, Notizen, Rückgängig, Löschen und optionale Markierung doppelter Zahlen
-- Hilfsangebot nach 60, 90 oder 120 Sekunden ohne Eingabe; abschaltbar. Erst ein Klick löst ein Feld auf. Ist das gewählte Feld bereits richtig, wird das erste ungelöste Feld verwendet.
+- „Neues Spiel“ als Neustart-Icon neben dem Zahnrad; Größe und Schwierigkeit wählen und ausdrücklich bestätigen. Abbrechen behält den Spielstand.
+- Hilfsangebot über ein Dropdown: Aus, 30s, 1min oder 2min. Erst ein Klick löst ein Feld auf. Ist das gewählte Feld bereits richtig, wird das erste ungelöste Feld verwendet.
+- Hervorhebung von Block, Zeile und Spalte separat ein- und ausschaltbar; das gewählte Feld bleibt markiert.
 - Dezent angezeigte aktive Spielzeit, Pause, automatische Pause bei versteckter App oder offenem Dialog
-- Automatische lokale Speicherung, responsive Darstellung in Hoch- und Querformat, Tastaturbedienung
+- Automatische lokale Speicherung, vollständig sichtbare Darstellung ohne Scrollen in Hoch- und Querformat, Tastaturbedienung. Das Spielfeld passt sich an die verfügbare Höhe an, auch bei Hilfsangeboten und Abschlussmeldung.
 - Installierbare PWA mit vollständigem Offline-Modus nach dem ersten erfolgreichen Laden
 
-## GitHub Pages
+## Name und GitHub Pages
+
+Nikoli bezeichnet „Sudoku“ als eingetragene Marke in Japan ([Quelle](https://www.nikoli.co.jp/en/puzzles/sudoku/)). Der sichtbare App-Name lautet deshalb **Number Place**, der von Nikoli erwähnte alternative Gattungsname. Repository-Pfad und Speicherschlüssel bleiben für vorhandene Links und Spielstände erhalten.
 
 Ziel: https://github.com/paranerd/sudoku
 
