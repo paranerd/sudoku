@@ -3,6 +3,7 @@ import { blockRows, blockCols, peers, conflicts, type Size, type Difficulty, typ
 import { load, save, newGame, type Game } from './state';
 import { loadScores, saveScores, recordScore, topScores } from './scores';
 import { celebrate } from './celebration';
+import { watchUpdates } from './updates';
 
 const labels: Record<Difficulty, string> = { easy: 'Leicht', medium: 'Mittel', hard: 'Schwer' };
 const icons = {
@@ -87,6 +88,12 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <div class="score-columns" id="score-columns"></div>
     <p id="scores-note" class="scores-note">Lokal auf diesem Gerät gespeichert.</p>
   </form></dialog>
+  <dialog id="update-dialog" aria-labelledby="update-title" aria-describedby="update-description"><form method="dialog" class="dialog-content">
+    <div class="dialog-header"><h2 id="update-title">Neue Version verfügbar</h2><button class="icon-button" value="later" aria-label="Schließen">${icon('close')}</button></div>
+    <p class="dialog-description" id="update-description">Eine neue Version ist bereit. Dein Spielstand und deine Highscores bleiben erhalten.</p>
+    <p id="update-error" class="update-error" role="alert" hidden></p>
+    <div class="dialog-actions"><button class="secondary" value="later">Später</button><button class="primary" id="update-now" type="button">Jetzt aktualisieren</button></div>
+  </form></dialog>
 `;
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id)! as T;
 const initial = load();
@@ -104,11 +111,20 @@ const helpDialog = $<HTMLDialogElement>('help-dialog');
 const revealDialog = $<HTMLDialogElement>('reveal-dialog');
 const completionDialog = $<HTMLDialogElement>('completion-dialog');
 const scoresDialog = $<HTMLDialogElement>('scores-dialog');
-const dialogs = [newDialog, settingsDialog, helpDialog, revealDialog, completionDialog, scoresDialog];
+const updateDialog = $<HTMLDialogElement>('update-dialog');
+const dialogs = [newDialog, settingsDialog, helpDialog, revealDialog, completionDialog, scoresDialog, updateDialog];
 let revealTarget: number | null = null;
 let scoreSize: Size = game?.size || 9;
 let scoresReturnToCompletion = false;
 let stopCelebration = () => {};
+let updates: ReturnType<typeof watchUpdates> | null = null;
+let updatePromptPending = false;
+function showPendingUpdate() {
+  if (updatePromptPending && !generating && !document.hidden && dialogs.every(d => !d.open)) {
+    updatePromptPending = false;
+    openDialog(updateDialog);
+  }
+}
 for (const dialog of dialogs) dialog.querySelector<HTMLHeadingElement>('h2')!.tabIndex = -1;
 function openDialog(dialog: HTMLDialogElement) {
   settleTime();
@@ -121,11 +137,13 @@ function notice(message: string) {
   announce(message);
   $('announcement').className = 'notice';
 }
-function persist() {
-  if (!save(game, settings) && !storageFailed) {
+function persist(): boolean {
+  const stored = save(game, settings);
+  if (!stored && !storageFailed) {
     storageFailed = true;
     notice('Speichern nicht verfügbar. Lass dieses Fenster geöffnet.');
   }
+  return stored;
 }
 function formatTime(seconds: number): string {
   const whole = Math.floor(seconds);
@@ -273,6 +291,7 @@ worker.onmessage = (event: MessageEvent<Puzzle>) => {
   paused = false; notesMode = false; generating = false;
   render(); settleTime(); persist();
   announce(`${game.size} mal ${game.size}, ${labels[game.difficulty]}. Neues Spiel bereit.`);
+  showPendingUpdate();
 };
 worker.onerror = () => {
   generating = false;
@@ -350,12 +369,14 @@ settingsDialog.addEventListener('change', () => {
 });
 $('help-button').onclick = () => { settingsDialog.close(); openDialog(helpDialog); };
 function closeDialog(dialog: HTMLDialogElement) {
+  if (dialog === updateDialog) { updates?.defer(); updatePromptPending = false; }
   dialog.close();
   if (dialog === revealDialog) revealTarget = null;
   if (dialog === completionDialog) stopCelebration();
   if (dialog === helpDialog) openDialog(settingsDialog);
   if (dialog === scoresDialog && scoresReturnToCompletion) { scoresReturnToCompletion = false; showCompletion(); }
   settleTime(); persist();
+  queueMicrotask(showPendingUpdate);
 }
 dialogs.forEach(dialog => {
   dialog.querySelector('form')!.addEventListener('submit', event => { event.preventDefault(); closeDialog(dialog); });
@@ -380,7 +401,7 @@ document.addEventListener('keydown', event => {
     else if (event.key.toLowerCase() === 'n') { event.preventDefault(); notesMode = !notesMode; render(); }
   }
 });
-document.addEventListener('visibilitychange', () => { settleTime(); persist(); });
+document.addEventListener('visibilitychange', () => { settleTime(); persist(); showPendingUpdate(); });
 window.addEventListener('pagehide', () => { settleTime(); persist(); });
 setInterval(() => {
   settleTime();
@@ -399,17 +420,35 @@ $('install-button').onclick = async () => {
 };
 window.addEventListener('appinstalled', () => { $('install-button').hidden = true; });
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
-  navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).then(async registration => {
-    const waiting = () => { if (registration.waiting && navigator.serviceWorker.controller) $('update-button').hidden = false; };
-    waiting();
-    registration.addEventListener('updatefound', () => {
-      registration.installing?.addEventListener('statechange', waiting);
+  navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, { updateViaCache: 'none' }).then(async registration => {
+    updates = watchUpdates(registration, {
+      available: (_, deferred) => {
+        $('update-button').hidden = false;
+        $('update-error').hidden = true;
+        updatePromptPending = !deferred;
+        showPendingUpdate();
+      },
+      cleared: () => {
+        $('update-button').hidden = true;
+        updatePromptPending = false;
+        if (updateDialog.open) closeDialog(updateDialog);
+      },
+      prepare: () => { settleTime(); return persist() && saveScores(scores); },
+      applying: active => {
+        updateDialog.querySelectorAll<HTMLButtonElement>('button').forEach(button => { button.disabled = active; });
+        $<HTMLButtonElement>('update-button').disabled = active;
+        $('update-now').textContent = active ? 'Aktualisieren …' : 'Jetzt aktualisieren';
+        $('update-button').textContent = active ? 'Aktualisieren …' : 'Update laden';
+      },
+      error: message => {
+        $('update-error').textContent = message; $('update-error').hidden = false;
+        if (settingsDialog.open) settingsDialog.close();
+        if (!updateDialog.open) openDialog(updateDialog);
+      },
+      reload: () => window.location.reload(),
     });
-    $('update-button').onclick = () => {
-      settleTime(); persist();
-      navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload(), { once: true });
-      registration.waiting?.postMessage('ACTIVATE');
-    };
+    $('update-button').onclick = () => updates?.apply();
+    $('update-now').onclick = () => updates?.apply();
     await navigator.serviceWorker.ready;
     document.documentElement.dataset.offlineReady = 'true';
   }).catch(() => {

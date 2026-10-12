@@ -20,6 +20,7 @@ self.addEventListener('install', event => {
 });
 self.addEventListener('message', event => {
   if (event.data === 'ACTIVATE') self.skipWaiting();
+  if (event.data === 'GET_VERSION') event.ports[0]?.postMessage({ version: '${version}' });
 });
 self.addEventListener('activate', event => {
   event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith(PREFIX) && key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim()));

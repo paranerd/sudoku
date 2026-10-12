@@ -56,7 +56,7 @@ Bei Hosting auf der Root-Domain `BASE_PATH=/` verwenden. Bei geändertem Pfad mu
 
 Der Build erstellt einen versionierten Service Worker und cached HTML, CSS, JavaScript, den Rätselgenerator, Manifest und Icons vollständig. Es gibt keine externen Fonts, Analyse, Werbung oder Netzwerk-API für Rätsel. Der Entwicklungsserver aktiviert absichtlich keinen Service Worker; Offline-Funktion mit dem Produktions-Build testen.
 
-Ein neues Update wartet, bis es in den Einstellungen mit **Update laden** aktiviert wird. Der Spielstand bleibt dabei gespeichert. Auf iPhone/iPad über **Teilen → Zum Home-Bildschirm** installieren, bei kompatiblen Browsern über **App installieren** in den Einstellungen.
+Eine neue Version erscheint als Overlay mit **Jetzt aktualisieren** und **Später**. Nach „Später“ bleibt **Update laden** in den Einstellungen verfügbar; dieselbe Version fragt beim Neuladen nicht erneut. Der Hinweis wartet, solange ein anderes Overlay offen ist. Die App prüft auch beim Zurückkehren, beim Wiederverbinden und alle fünf Minuten im Vordergrund auf Updates. Vor dem Aktivieren werden Spielstand und Highscores gespeichert. Auf iPhone/iPad über **Teilen → Zum Home-Bildschirm** installieren, bei kompatiblen Browsern über **App installieren** in den Einstellungen.
 
 Browserdaten löschen entfernt auch den Spielstand. Ist lokales Speichern blockiert, bleibt das aktuelle Spiel im Arbeitsspeicher; die App meldet die Einschränkung.
 
