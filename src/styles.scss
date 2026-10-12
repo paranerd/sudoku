@@ -104,7 +104,7 @@ details { margin-top: 20px; color: #7e8975; summary { font-size: 12px; cursor: p
   .header { height: 30px; }
   .wordmark { font-size: 24px; }
   .intro { display: none; }
-  .game-layout { grid-template-columns: minmax(0, min(48vw, calc(100dvh - 111px))) minmax(170px, 220px); justify-content: center; gap: 35px; margin-top: 4px; }
+  .game-layout { grid-template-columns: minmax(0, min(48vw, calc(100dvh - 123px))) minmax(170px, 220px); justify-content: center; gap: 35px; margin-top: 4px; }
   .board-meta { min-height: 29px; margin-bottom: 4px; font-size: 11px; }
   .board-footer { margin-top: 8px; font-size: 9px; }
   .cell { font-size: clamp(16px, 5dvh, 23px); }

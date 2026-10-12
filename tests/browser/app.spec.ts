@@ -87,6 +87,9 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
       expect(box!.x).toBeGreaterThanOrEqual(0);
       expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      if (viewport.width > viewport.height && viewport.height < 620) {
+        expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(true);
+      }
       await expect(page.locator('#new-button')).toBeVisible();
     }
     await page.screenshot({ path: `test-results/sudoku-${viewport.width}x${viewport.height}.png`, fullPage: true });
