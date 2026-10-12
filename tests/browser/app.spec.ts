@@ -158,12 +158,21 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1280, height: 60
       expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       await noScroll(page);
+      const docked = await page.locator('.tools').evaluate(el => getComputedStyle(el).position === 'fixed');
+      if (docked) {
+        const toolbar = await page.locator('.tools').boundingBox();
+        const pad = await page.locator('#number-pad').boundingBox();
+        expect(box!.y + box!.height).toBeLessThanOrEqual(toolbar!.y);
+        expect(pad!.y + pad!.height).toBeLessThanOrEqual(toolbar!.y);
+        expect(await page.locator('.tools').evaluate(el => parseFloat(getComputedStyle(el).paddingBottom))).toBeGreaterThanOrEqual(12);
+      }
       await expect(page.locator('#new-button')).toBeVisible();
     }
     await page.clock.fastForward(61000); await expect(page.locator('#hint-card')).toBeVisible(); await noScroll(page);
     await page.getByRole('button', { name: 'Hilfsangebot schließen' }).click();
     await page.screenshot({ path: `test-results/sudoku-${viewport.width}x${viewport.height}.png`, fullPage: true });
     await page.getByRole('button', { name: 'Einstellungen öffnen' }).click(); await noScroll(page);
+    await expect(page.locator('label[for="idle-delay"] strong')).toHaveText('Hilfe bei einer Denkpause');
     await page.screenshot({ path: `test-results/settings-${viewport.width}x${viewport.height}.png`, fullPage: true });
     await page.getByRole('button', { name: 'Tastatur & Spielregeln' }).click(); await expect(page.locator('#help-dialog')).toBeVisible(); await noScroll(page);
     await page.getByRole('button', { name: 'Zurück zu den Einstellungen' }).click();

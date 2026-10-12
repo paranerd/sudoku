@@ -28,6 +28,7 @@ npm run preview
 - Hervorhebung von Block, Zeile und Spalte separat ein- und ausschaltbar; das gewählte Feld bleibt markiert.
 - Dezent angezeigte aktive Spielzeit, Pause, automatische Pause bei versteckter App oder offenem Dialog
 - Automatische lokale Speicherung, vollständig sichtbare Darstellung ohne Scrollen in Hoch- und Querformat, Tastaturbedienung. Das Spielfeld passt sich an die verfügbare Höhe an, auch bei Hilfsangeboten und Abschlussmeldung.
+- Mobil bleibt die Werkzeugleiste am unteren Bildschirmrand. Reservierter Platz und zusätzlicher Safe-Area-Abstand verhindern Überlappung mit dem Home-Indikator und dem Spielfeld.
 - Installierbare PWA mit vollständigem Offline-Modus nach dem ersten erfolgreichen Laden
 
 ## Name und GitHub Pages

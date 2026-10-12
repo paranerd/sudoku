@@ -57,7 +57,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   </form></dialog>
   <dialog id="settings-dialog" aria-labelledby="settings-title"><form method="dialog" class="dialog-content">
     <div class="dialog-header"><h2 id="settings-title">Einstellungen</h2><button class="icon-button" value="close" aria-label="Schließen">${icon('close')}</button></div>
-    <div class="setting"><label for="idle-delay">Hilfe bei einer Denkpause</label><select id="idle-delay"><option value="0">Aus</option><option value="30">30s</option><option value="60">1min</option><option value="120">2min</option></select></div>
+    <div class="setting"><label for="idle-delay"><strong>Hilfe bei einer Denkpause</strong><span>Bietet nach einer Pause an, eine Zahl aufzulösen.</span></label><select id="idle-delay"><option value="0">Aus</option><option value="30">30s</option><option value="60">1min</option><option value="120">2min</option></select></div>
     <div class="setting"><label for="conflict-toggle"><strong>Doppelte Zahlen markieren</strong><span>Zeigt Konflikte in Zeile, Spalte und Block.</span></label><input class="switch" id="conflict-toggle" type="checkbox"></div>
     <div class="setting"><label for="highlight-toggle"><strong>Block, Zeile & Spalte hervorheben</strong><span>Markiert die Umgebung des gewählten Feldes.</span></label><input class="switch" id="highlight-toggle" type="checkbox"></div>
     <div class="app-actions"><button class="text-button" id="help-button" type="button">Tastatur & Spielregeln</button><button class="text-button" id="install-button" type="button" hidden>App installieren ${icon('arrow')}</button><button class="text-button" id="update-button" type="button" hidden>Update laden ${icon('arrow')}</button></div>

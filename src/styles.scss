@@ -121,4 +121,9 @@ fieldset { padding: 0; border: 0; margin: 0 0 20px; legend { font-size: 12px; fo
   .completion { padding: 10px; h2 { font-size: 14px; } }
 }
 @media (max-width: 360px) and (orientation: portrait) { .shell { padding-inline: 14px; } .wordmark { font-size: 23px; } .number { font-size: 20px; } .dialog-content { padding: 18px; } .dialog-header h2 { font-size: 21px; } }
+@media (max-width: 720px) and (orientation: portrait), (max-width: 560px), (max-width: 1000px) and (max-height: 620px) and (orientation: landscape) {
+  .shell { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+  .tools { position: fixed; left: 0; right: 0; bottom: 0; z-index: 3; justify-content: center; gap: 12px; margin: 0; padding: 8px max(20px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px)); background: $paper; }
+  .tool { flex: 0 1 85px; }
+}
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
