@@ -1,12 +1,13 @@
 import { countSolutions, type Puzzle } from './sudoku';
 
 export interface Snapshot { values: number[]; notes: number[][] }
-export interface Game extends Puzzle, Snapshot { elapsed: number; history: Snapshot[]; completed: boolean; hints: number }
+export interface Game extends Puzzle, Snapshot { id: string; elapsed: number; history: Snapshot[]; completed: boolean; hints: number; scoreRecorded: boolean; scoreRank: number | null }
 export interface Settings { showConflicts: boolean; highlightPeers: boolean }
 export const defaults: Settings = { showConflicts: true, highlightPeers: true };
 const key = 'quiet-sudoku-v1';
+const gameId = () => globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 export function newGame(puzzle: Puzzle): Game {
-  return { ...puzzle, values: [...puzzle.givens], notes: puzzle.givens.map(() => []), elapsed: 0, history: [], completed: false, hints: 0 };
+  return { ...puzzle, id: gameId(), values: [...puzzle.givens], notes: puzzle.givens.map(() => []), elapsed: 0, history: [], completed: false, hints: 0, scoreRecorded: false, scoreRank: null };
 }
 function validSnapshot(value: unknown, game: Puzzle): value is Snapshot {
   if (!value || typeof value !== 'object') return false;
@@ -38,6 +39,9 @@ export function load(): { game: Game | null; settings: Settings } {
     g.history = Array.isArray(g.history) ? g.history.filter(s => validSnapshot(s, g)).slice(-100) : [];
     g.hints = Number.isInteger(g.hints) && g.hints >= 0 ? g.hints : 0;
     g.completed = g.values.every((n, i) => n === g.solution[i]);
+    g.id = typeof g.id === 'string' && /^[\w-]{1,80}$/.test(g.id) ? g.id : gameId();
+    g.scoreRecorded = g.completed && g.scoreRecorded === true;
+    g.scoreRank = g.scoreRecorded && Number.isInteger(g.scoreRank) && Number(g.scoreRank) >= 1 && Number(g.scoreRank) <= 5 ? g.scoreRank : null;
     return { game: g, settings };
   } catch { return { game: null, settings }; }
 }

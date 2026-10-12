@@ -27,6 +27,8 @@ npm run preview
 - „Lösen“ mit Glühbirnen-Icon in der Werkzeugleiste: Erst nach einer zusätzlichen Bestätigung wird das gewählte Feld aufgelöst. Ist es vorgegeben oder bereits richtig, wird das erste ungelöste Feld angeboten. Der Dialog nennt Zeile und Spalte; Abbrechen ändert nichts. Es gibt keine automatische Denkpausen-Hilfe.
 - Hervorhebung von Block, Zeile und Spalte separat ein- und ausschaltbar; das gewählte Feld bleibt markiert.
 - Dezent angezeigte aktive Spielzeit, Pause, automatische Pause bei versteckter App oder offenem Dialog
+- Abschluss-Overlay mit Schwierigkeit, Größe, Zeit, Highscore-Hinweis sowie direkten Buttons für neues Spiel und Highscores. Eine kurze, lautlose Konfetti-Animation feiert den Abschluss; „Bewegung reduzieren“ im Betriebssystem schaltet sie aus.
+- Highscores über das Pokal-Icon: pro Größe die fünf schnellsten Zeiten für Leicht, Mittel und Schwer. Zeiten werden lokal gespeichert, einschließlich Hilfestellungen (mit * markiert). Ein Ergebnis unter den besten fünf zählt als neuer Highscore; gleiche Zeiten bevorzugen den früheren Eintrag. Neuladen erfasst das Ergebnis nicht doppelt.
 - Automatische lokale Speicherung, vollständig sichtbare Darstellung ohne Scrollen in Hoch- und Querformat, Tastaturbedienung. Das Spielfeld passt sich an die verfügbare Höhe an, auch bei der Abschlussmeldung.
 - Mobil bleibt die Werkzeugleiste am unteren Bildschirmrand. Reservierter Platz und zusätzlicher Safe-Area-Abstand verhindern Überlappung mit dem Home-Indikator und dem Spielfeld.
 - Installierbare PWA mit vollständigem Offline-Modus nach dem ersten erfolgreichen Laden
@@ -62,7 +64,7 @@ Browserdaten löschen entfernt auch den Spielstand. Ist lokales Speichern blocki
 
 ```sh
 npm test
-npx playwright install chromium
+npx playwright install chromium webkit
 npm run test:e2e
 ```
 

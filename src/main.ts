@@ -1,6 +1,8 @@
 import './styles.scss';
 import { blockRows, blockCols, peers, conflicts, type Size, type Difficulty, type Puzzle } from './sudoku';
 import { load, save, newGame, type Game } from './state';
+import { loadScores, saveScores, recordScore, topScores } from './scores';
+import { celebrate } from './celebration';
 
 const labels: Record<Difficulty, string> = { easy: 'Leicht', medium: 'Mittel', hard: 'Schwer' };
 const icons = {
@@ -15,13 +17,14 @@ const icons = {
   light: '<path d="M9 18h6M10 21h4M9 15c0-2-3-3-3-6a6 6 0 1 1 12 0c0 3-3 4-3 6Z"/>',
   check: '<path d="m5 12 4 4L19 6"/>',
   restart: '<path d="M21 12a9 9 0 1 1-9-9c2.5 0 4.9 1 6.7 2.8L21 8"/><path d="M21 3v5h-5"/>',
+  trophy: '<path d="M8 3h8v6a4 4 0 0 1-8 0ZM8 5H4v2a4 4 0 0 0 4 4M16 5h4v2a4 4 0 0 1-4 4M12 13v5M8 21h8M9 18h6v3H9Z"/>',
 };
 const icon = (name: keyof typeof icons) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name]}</svg>`;
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <main class="shell">
     <header class="header">
       <a class="wordmark" href="./" aria-label="Number Place Startseite">number place<span>.</span></a>
-      <div class="header-actions"><button id="new-button" class="icon-button" aria-label="Neues Spiel" title="Neues Spiel">${icon('restart')}</button><button class="icon-button" id="settings-button" aria-label="Einstellungen öffnen" title="Einstellungen">${icon('settings')}</button></div>
+      <div class="header-actions"><button id="new-button" class="icon-button" aria-label="Neues Spiel" title="Neues Spiel">${icon('restart')}</button><button id="scores-button" class="icon-button" aria-label="Highscores öffnen" title="Highscores">${icon('trophy')}</button><button class="icon-button" id="settings-button" aria-label="Einstellungen öffnen" title="Einstellungen">${icon('settings')}</button></div>
     </header>
     <div class="intro"><p class="eyebrow">EIN FELD. EIN KLARER KOPF.</p><h1>Einfach mal abschalten.</h1></div>
     <section class="game-layout" aria-label="Zahlenrätsel">
@@ -43,7 +46,6 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
           <button id="erase-button" class="tool" aria-label="Gewähltes Feld leeren">${icon('erase')}<span>Löschen</span></button>
           <button id="reveal-button" class="tool" aria-label="Ein Feld lösen" disabled>${icon('light')}<span>Lösen</span></button>
         </div>
-        <div class="completion" id="completion" hidden><span class="completion-icon">${icon('check')}</span><h2>Alles an seinem Platz.</h2><p id="completion-text"></p></div>
       </aside>
     </section>
   </main>
@@ -53,7 +55,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <p class="dialog-description" id="new-description">Möchtest du ein neues Spiel starten?</p>
     <fieldset><legend>Feldgröße</legend><div class="segments" id="size-options">${([4, 6, 9] as Size[]).map(n => `<label><input type="radio" name="size" value="${n}"><span>${n} × ${n}</span></label>`).join('')}</div></fieldset>
     <fieldset><legend>Schwierigkeit</legend><div class="segments">${Object.entries(labels).map(([key, label]) => `<label><input type="radio" name="difficulty" value="${key}"><span>${label}</span></label>`).join('')}</div></fieldset>
-    <div class="dialog-actions"><button class="secondary" value="cancel">Abbrechen</button><button class="primary" id="start-button" type="button">Neues Spiel starten ${icon('arrow')}</button></div>
+    <div class="dialog-actions"><button class="secondary" value="cancel">Abbrechen</button><button class="primary" id="start-button" type="button">Starten ${icon('arrow')}</button></div>
   </form></dialog>
   <dialog id="settings-dialog" aria-labelledby="settings-title"><form method="dialog" class="dialog-content">
     <div class="dialog-header"><h2 id="settings-title">Einstellungen</h2><button class="icon-button" value="close" aria-label="Schließen">${icon('close')}</button></div>
@@ -69,13 +71,28 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <dialog id="reveal-dialog" aria-labelledby="reveal-title" aria-describedby="reveal-description"><form method="dialog" class="dialog-content">
     <div class="dialog-header"><h2 id="reveal-title">Feld lösen?</h2><button class="icon-button" value="cancel" aria-label="Schließen">${icon('close')}</button></div>
     <p class="dialog-description" id="reveal-description"></p>
-    <div class="dialog-actions"><button class="secondary" value="cancel" autofocus>Abbrechen</button><button class="primary" id="confirm-reveal" type="button">Feld lösen ${icon('check')}</button></div>
+    <div class="dialog-actions"><button class="secondary" value="cancel">Abbrechen</button><button class="primary" id="confirm-reveal" type="button">Feld lösen ${icon('check')}</button></div>
+  </form></dialog>
+  <dialog id="completion-dialog" aria-labelledby="completion-title"><canvas id="confetti" aria-hidden="true" hidden></canvas><form method="dialog" class="dialog-content">
+    <div class="dialog-header"><h2 id="completion-title">Alles an seinem Platz.</h2><button class="icon-button" value="close" aria-label="Schließen">${icon('close')}</button></div>
+    <p id="record-badge" class="record-badge" hidden></p>
+    <dl class="completion-stats"><div><dt>Schwierigkeit</dt><dd id="result-difficulty"></dd></div><div><dt>Größe</dt><dd id="result-size"></dd></div><div><dt>Zeit</dt><dd id="result-time"></dd></div></dl>
+    <p id="result-hints" class="result-hints" hidden></p>
+    <div class="dialog-actions"><button id="result-scores" class="secondary" type="button">${icon('trophy')} Highscores</button><button id="result-new" class="primary" type="button">Neues Spiel ${icon('restart')}</button></div>
+  </form></dialog>
+  <dialog id="scores-dialog" aria-labelledby="scores-title"><form method="dialog" class="dialog-content">
+    <div class="dialog-header"><h2 id="scores-title">Highscores</h2><button class="icon-button" value="close" aria-label="Schließen">${icon('close')}</button></div>
+    <p class="score-intro">Deine fünf besten Zeiten je Schwierigkeit.</p>
+    <fieldset class="score-sizes"><legend class="sr-only">Rastergröße</legend><div class="segments">${([4, 6, 9] as Size[]).map(size => `<label><input type="radio" name="score-size" value="${size}"><span>${size} × ${size}</span></label>`).join('')}</div></fieldset>
+    <div class="score-columns" id="score-columns"></div>
+    <p id="scores-note" class="scores-note">Lokal auf diesem Gerät gespeichert.</p>
   </form></dialog>
 `;
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id)! as T;
 const initial = load();
 let game: Game | null = initial.game;
 const settings = initial.settings;
+let scores = loadScores();
 let selected = game ? game.values.findIndex(n => !n) : 0;
 if (selected < 0) selected = 0;
 let notesMode = false, paused = false, generating = false;
@@ -85,8 +102,20 @@ let storageFailed = false;
 const newDialog = $<HTMLDialogElement>('new-dialog'), settingsDialog = $<HTMLDialogElement>('settings-dialog');
 const helpDialog = $<HTMLDialogElement>('help-dialog');
 const revealDialog = $<HTMLDialogElement>('reveal-dialog');
-const dialogs = [newDialog, settingsDialog, helpDialog, revealDialog];
+const completionDialog = $<HTMLDialogElement>('completion-dialog');
+const scoresDialog = $<HTMLDialogElement>('scores-dialog');
+const dialogs = [newDialog, settingsDialog, helpDialog, revealDialog, completionDialog, scoresDialog];
 let revealTarget: number | null = null;
+let scoreSize: Size = game?.size || 9;
+let scoresReturnToCompletion = false;
+let stopCelebration = () => {};
+for (const dialog of dialogs) dialog.querySelector<HTMLHeadingElement>('h2')!.tabIndex = -1;
+function openDialog(dialog: HTMLDialogElement) {
+  settleTime();
+  dialog.showModal();
+  dialog.querySelector<HTMLHeadingElement>('h2')!.focus({ preventScroll: true });
+  settleTime();
+}
 function announce(message: string) { $('announcement').textContent = message; }
 function notice(message: string) {
   announce(message);
@@ -110,7 +139,7 @@ function settleTime() {
   running = !!game && !paused && !game.completed && !generating && !document.hidden && dialogs.every(d => !d.open);
   $('timer').textContent = formatTime(game?.elapsed || 0);
 }
-// Size the square using the actual remaining space, including the completion card.
+// Size the square using the actual available space, including the fixed mobile toolbar.
 function fitBoard() {
   const layout = document.querySelector<HTMLElement>('.game-layout')!;
   const controls = document.querySelector<HTMLElement>('.controls')!;
@@ -124,6 +153,7 @@ function fitBoard() {
 }
 new ResizeObserver(fitBoard).observe(document.querySelector('.game-layout')!);
 new ResizeObserver(fitBoard).observe(document.querySelector('.controls')!);
+window.visualViewport?.addEventListener('resize', fitBoard);
 function render() {
   if (!game) return;
   const { size, values, givens, notes } = game;
@@ -156,9 +186,44 @@ function render() {
   $('pause-button').setAttribute('aria-label', paused ? 'Weiterspielen' : 'Spiel pausieren');
   $('pause-overlay').hidden = !paused;
   $('loading-overlay').hidden = !generating;
-  $('completion').hidden = !game.completed;
-  if (game.completed) $('completion-text').textContent = `Gelöst in ${formatTime(game.elapsed)}${game.hints ? ` · ${game.hints} ${game.hints === 1 ? 'Hilfestellung' : 'Hilfestellungen'}` : ''}.`;
   fitBoard();
+}
+function showCompletion(animate = false) {
+  if (!game?.completed) return;
+  if (!game.scoreRecorded) {
+    const result = recordScore(scores, game);
+    scores = result.scores; game.scoreRank = result.rank; game.scoreRecorded = true;
+    if (!saveScores(scores)) notice('Highscores können in diesem Browser nicht gespeichert werden.');
+    persist();
+  }
+  $('result-difficulty').textContent = labels[game.difficulty];
+  $('result-size').textContent = `${game.size} × ${game.size}`;
+  $('result-time').textContent = formatTime(game.elapsed);
+  $('record-badge').hidden = game.scoreRank === null;
+  $('record-badge').textContent = game.scoreRank === null ? '' : `Neuer Highscore · Platz ${game.scoreRank}`;
+  $('result-hints').hidden = game.hints === 0;
+  $('result-hints').textContent = `${game.hints} ${game.hints === 1 ? 'Hilfestellung' : 'Hilfestellungen'} verwendet`;
+  openDialog(completionDialog);
+  if (animate) stopCelebration = celebrate($<HTMLCanvasElement>('confetti'));
+}
+function renderScores() {
+  $('score-columns').innerHTML = (Object.entries(labels) as [Difficulty, string][]).map(([difficulty, label]) => {
+    const list = topScores(scores, scoreSize, difficulty);
+    return `<section class="score-column" aria-label="${scoreSize} mal ${scoreSize}, ${label}"><h3>${label}</h3><ol>${Array.from({ length: 5 }, (_, i) => {
+      const s = list[i];
+      if (!s) return '<li class="empty-score"><span aria-label="Noch kein Eintrag">—</span></li>';
+      const title = `${new Date(s.achievedAt).toLocaleDateString('de-DE')}${s.hints ? ` · ${s.hints} Hilfestellungen` : ''}`;
+      return `<li class="${s.id === game?.id ? 'current-score' : ''}" title="${title}"><span>${formatTime(s.elapsed)}</span>${s.hints ? '<span class="score-hints" aria-label="Mit Hilfestellung">*</span>' : ''}</li>`;
+    }).join('')}</ol></section>`;
+  }).join('');
+  $('scores-note').textContent = `Lokal auf diesem Gerät gespeichert.${topScores(scores, scoreSize, 'easy').concat(topScores(scores, scoreSize, 'medium'), topScores(scores, scoreSize, 'hard')).some(s => s.hints) ? ' * Mit Hilfestellung.' : ''}`;
+}
+function openScores(fromCompletion = false) {
+  scoresReturnToCompletion = fromCompletion;
+  if (completionDialog.open) { stopCelebration(); completionDialog.close(); }
+  scoreSize = game?.size || 9;
+  scoresDialog.querySelector<HTMLInputElement>(`[name="score-size"][value="${scoreSize}"]`)!.checked = true;
+  renderScores(); openDialog(scoresDialog);
 }
 function focusCell() { $('board').querySelector<HTMLButtonElement>(`[data-index="${selected}"]`)?.focus({ preventScroll: true }); }
 function snapshot() {
@@ -181,11 +246,13 @@ function edit(value: number, reveal = false) {
     if (value) game.notes.forEach((ns, i) => { if (peers(i, selected, game!.size)) game!.notes[i] = ns.filter(n => n !== value); });
   }
   if (reveal) game.hints++;
-  if (game.values.every((n, i) => n === game!.solution[i])) {
+  const completed = game.values.every((n, i) => n === game!.solution[i]);
+  if (completed) {
     settleTime(); game.completed = true; running = false;
     announce(`Rätsel gelöst in ${formatTime(game.elapsed)}.`);
   }
   render(); persist();
+  if (completed) showCompletion(true);
 }
 function undo() {
   if (!game || paused || generating || game.completed) return;
@@ -238,7 +305,7 @@ $('reveal-button').onclick = () => {
   if (revealTarget < 0) { revealTarget = null; return; }
   settleTime();
   $('reveal-description').textContent = `Möchtest du das Feld in Zeile ${Math.floor(revealTarget / game.size) + 1}, Spalte ${revealTarget % game.size + 1} lösen?`;
-  revealDialog.showModal(); settleTime();
+  openDialog(revealDialog);
 };
 $('confirm-reveal').onclick = () => {
   if (!game || revealTarget === null || !revealDialog.open) return;
@@ -247,15 +314,24 @@ $('confirm-reveal').onclick = () => {
   selected = target;
   edit(game.solution[target], true);
   if (!game.completed) announce(`Zeile ${Math.floor(target / game.size) + 1}, Spalte ${target % game.size + 1}: ${game.solution[target]}.`);
-  focusCell();
+  if (!game.completed) focusCell();
 };
-$('new-button').onclick = () => {
+function openNewGame() {
+  if (completionDialog.open) { stopCelebration(); completionDialog.close(); }
   settleTime();
   newDialog.querySelector<HTMLInputElement>(`[name="size"][value="${game?.size || 9}"]`)!.checked = true;
   newDialog.querySelector<HTMLInputElement>(`[name="difficulty"][value="${game?.difficulty || 'medium'}"]`)!.checked = true;
   $('new-description').textContent = game && !game.completed ? 'Möchtest du ein neues Spiel starten? Dein aktuelles Spiel wird dabei ersetzt.' : 'Möchtest du ein neues Spiel starten?';
-  newDialog.showModal(); settleTime();
-};
+  openDialog(newDialog);
+}
+$('new-button').onclick = openNewGame;
+$('result-new').onclick = openNewGame;
+$('scores-button').onclick = () => openScores();
+$('result-scores').onclick = () => openScores(true);
+scoresDialog.addEventListener('change', () => {
+  scoreSize = Number(scoresDialog.querySelector<HTMLInputElement>('[name="score-size"]:checked')!.value) as Size;
+  renderScores();
+});
 $('start-button').onclick = () => {
   const data = new FormData(newDialog.querySelector('form')!);
   newDialog.close();
@@ -265,18 +341,20 @@ $('settings-button').onclick = () => {
   settleTime();
   $<HTMLInputElement>('conflict-toggle').checked = settings.showConflicts;
   $<HTMLInputElement>('highlight-toggle').checked = settings.highlightPeers;
-  settingsDialog.showModal(); settleTime();
+  openDialog(settingsDialog);
 };
 settingsDialog.addEventListener('change', () => {
   settings.showConflicts = $<HTMLInputElement>('conflict-toggle').checked;
   settings.highlightPeers = $<HTMLInputElement>('highlight-toggle').checked;
   render(); persist();
 });
-$('help-button').onclick = () => { settingsDialog.close(); helpDialog.showModal(); settleTime(); };
+$('help-button').onclick = () => { settingsDialog.close(); openDialog(helpDialog); };
 function closeDialog(dialog: HTMLDialogElement) {
   dialog.close();
   if (dialog === revealDialog) revealTarget = null;
-  if (dialog === helpDialog) settingsDialog.showModal();
+  if (dialog === completionDialog) stopCelebration();
+  if (dialog === helpDialog) openDialog(settingsDialog);
+  if (dialog === scoresDialog && scoresReturnToCompletion) { scoresReturnToCompletion = false; showCompletion(); }
   settleTime(); persist();
 }
 dialogs.forEach(dialog => {
@@ -338,5 +416,5 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
     notice('Offline-Modus konnte nicht geladen werden. Bitte mit Internetverbindung neu laden.');
   });
 }
-if (game) { $('loading-overlay').hidden = true; render(); settleTime(); }
+if (game) { $('loading-overlay').hidden = true; render(); settleTime(); if (game.completed) showCompletion(); }
 else start(9, 'medium');
