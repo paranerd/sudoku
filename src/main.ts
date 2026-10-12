@@ -24,7 +24,7 @@ const icon = (name: keyof typeof icons) => `<svg viewBox="0 0 24 24" fill="none"
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <main class="shell">
     <header class="header">
-      <a class="wordmark" href="./" aria-label="Number Place Startseite">number place<span>.</span></a>
+      <a class="wordmark" href="./" aria-label="Sudoku Startseite">sudoku<span>.</span></a>
       <div class="header-actions"><button id="new-button" class="icon-button" aria-label="Neues Spiel" title="Neues Spiel">${icon('restart')}</button><button id="scores-button" class="icon-button" aria-label="Highscores öffnen" title="Highscores">${icon('trophy')}</button><button class="icon-button" id="settings-button" aria-label="Einstellungen öffnen" title="Einstellungen">${icon('settings')}</button></div>
     </header>
     <div class="intro"><p class="eyebrow">EIN FELD. EIN KLARER KOPF.</p><h1>Einfach mal abschalten.</h1></div>

@@ -1,4 +1,4 @@
-# Number Place
+# Sudoku
 
 Eine minimalistische, deutschsprachige Zahlenrätsel-PWA mit TypeScript und SCSS. Keine Sounds, kein Konto, keine externen Laufzeitdienste.
 
@@ -33,9 +33,7 @@ npm run preview
 - Mobil bleibt die Werkzeugleiste am unteren Bildschirmrand. Reservierter Platz und zusätzlicher Safe-Area-Abstand verhindern Überlappung mit dem Home-Indikator und dem Spielfeld.
 - Installierbare PWA mit vollständigem Offline-Modus nach dem ersten erfolgreichen Laden
 
-## Name und GitHub Pages
-
-Nikoli bezeichnet „Sudoku“ als eingetragene Marke in Japan ([Quelle](https://www.nikoli.co.jp/en/puzzles/sudoku/)). Der sichtbare App-Name lautet deshalb **Number Place**, der von Nikoli erwähnte alternative Gattungsname. Repository-Pfad und Speicherschlüssel bleiben für vorhandene Links und Spielstände erhalten.
+## GitHub Pages
 
 Ziel: https://github.com/paranerd/sudoku
 

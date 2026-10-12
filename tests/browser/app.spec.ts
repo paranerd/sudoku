@@ -244,7 +244,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1280, height: 60
   test(`responsive layout ${viewport.width}×${viewport.height}`, async ({ page }) => {
     await page.clock.install(); await page.setViewportSize(viewport); await ready(page);
     await expect(page.locator('.board-footer, .footer, .number-count, .offline-info, .quiet-note')).toHaveCount(0);
-    await expect(page.locator('.wordmark')).toHaveText('number place.');
+    await expect(page.locator('.wordmark')).toHaveText('sudoku.');
     for (const size of [4, 6, 9]) {
       await create(page, size);
       const box = await page.locator('#board').boundingBox();

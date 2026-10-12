@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "Number Place",
-  "short_name": "Number Place",
+  "name": "Sudoku",
+  "short_name": "Sudoku",
   "description": "Ein ruhiges Zahlenrätsel. Vollständig offline spielbar.",
   "lang": "de",
   "start_url": "./",
